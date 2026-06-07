@@ -1,8 +1,6 @@
 package org.example.util.enemies;
 
-import jdk.jfr.consumer.RecordedThread;
 import org.example.GameScreen;
-import org.example.util.Vector2;
 
 import java.awt.*;
 import java.util.Random;

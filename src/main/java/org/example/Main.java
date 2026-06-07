@@ -6,8 +6,8 @@ import javax.swing.*;
 import java.io.IOException;
 
 public class Main {
-    static void main() throws IOException {
-        JFrame frame = new JFrame();
+    static JFrame frame = new JFrame();
+    void main() throws IOException {
         frame.setContentPane(new GameScreen(frame));
         frame.setName("a manas-manushya product");
 
