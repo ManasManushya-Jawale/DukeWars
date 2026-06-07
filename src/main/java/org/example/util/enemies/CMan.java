@@ -2,6 +2,7 @@ package org.example.util.enemies;
 
 import org.example.GameScreen;
 import org.example.util.Projectile;
+import org.example.util.Utils;
 import org.w3c.dom.css.Rect;
 
 import javax.imageio.ImageIO;
@@ -12,19 +13,18 @@ import java.awt.image.ImageObserver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class CMan extends Enemy {
     class CManProjectile extends Projectile {
-        public double angle = 0;
         public float pfy=0, pfx=0;
-        public float rotation = 0;
 
         public BufferedImage image;
         public Point target;
 
         public double timePassed = 0;
 
-        public CManProjectile(double angle, Point target) {
+        public CManProjectile(Point target) {
             super(50);
             try {
                 this.image = ImageIO.read(getClass().getResource("/sprites/Projectiles.png").openStream());
@@ -32,10 +32,10 @@ public class CMan extends Enemy {
                 throw new RuntimeException(e);
             }
 
-            rect.setSize(image.getWidth(), image.getHeight());
+            rect.width = image.getWidth(); rect.height = image.getHeight();
 
-            this.angle = angle;
-            this.target = target;
+            this.target = new Point((int) (target.x + new Random().nextFloat(-dumb, dumb)),
+                    (int) (target.y + new Random().nextFloat(-dumb, dumb)));
         }
 
         @Override
@@ -61,7 +61,7 @@ public class CMan extends Enemy {
         Graphics2D g2d = ((Graphics2D) g);
         AffineTransform transform = new AffineTransform();
         transform.translate(rect.x, rect.y);
-        transform.rotate(getAngle(rect.getLocation(), duke.getLocation())-135);
+        transform.rotate(getAngle(rect.getBounds().getLocation(), duke.getLocation())-135);
 //        transform.translate((double) -rect.width / 2, (double) -rect.height / 2);
 
         g2d.drawImage(image, transform, self);
@@ -70,7 +70,6 @@ public class CMan extends Enemy {
             AffineTransform transform1 = new AffineTransform();
             transform1.translate(projectile.rect.x, projectile.rect.y);
             transform1.translate((double) -projectile.rect.width / 2, (double) -projectile.rect.height / 2);
-            transform1.rotate(projectile.rotation);
             transform1.scale(2, 2);
             g2d.drawImage(projectile.image, transform1, self);
         }
@@ -92,19 +91,24 @@ public class CMan extends Enemy {
                 p.timePassed > 1);
     }
 
+    boolean previousState = false;
     public void crashOut(Rectangle duke) {
+        if (crashout != previousState) projectiles.clear();
 
             // Target Duke's center (adjust offsets to match Duke's sprite size)
         float targetX = duke.x + 69;
         float targetY = duke.y;
 
-        float dx = targetX - fx;
-        float dy = targetY - fy;
+        float dx = targetX - rect.x;
+        float dy = targetY - rect.y;
 
-        fx += dx * 1 / 100 * speed * 1.5f;
-        fy += dy * 1 / 100 * speed * 1.5f;
-        rect.setLocation(Math.round(fx), Math.round(fy));
+        rect.x += dx * 1 / 100 * speed * 1.5f;
+        rect.y += dy * 1 / 100 * speed * 1.5f;
+
+        previousState = true;
     }
+
+    float dumb = 360;
 
     public void normalAttacks(Rectangle duke) {
 
@@ -113,28 +117,15 @@ public class CMan extends Enemy {
                         Math.pow((duke.y - rect.y), 2)
         );
 
-        if (dist >= 400) {
-            // Target Duke's center (adjust offsets to match Duke's sprite size)
-            float targetX = duke.x + 69;
-            float targetY = duke.y;
-
-            float dx = targetX - fx;
-            float dy = targetY - fy;
-
-            fx += dx * 1 / 100 * speed;
-            fy += dy * 1 / 100 * speed;
-            rect.setLocation(Math.round(fx), Math.round(fy));
+        if (dist >= 800) {
+            Utils.pathFind(this.duke, speed, rect);
         }
 
         for (CManProjectile projectile : projectiles) {
-            float pdx = projectile.target.x - projectile.pfx;
-            float pdy = projectile.target.y - projectile.pfy;
 
-            projectile.pfx += pdx * 1/100 * projectile.speed;
-            projectile.pfy += pdy * 1/100 * projectile.speed;
-            projectile.rect.setLocation(Math.round(projectile.pfx), Math.round(projectile.pfy));
-            projectile.rotation += ((float) Math.toRadians(1));
             projectile.timePassed += parent.spawner_delta;
+
+            Utils.pathFind(projectile.target, projectile.speed, projectile.rect);
 
             if (projectile.rect.intersects(duke)) {
                 parent.kill();
@@ -150,10 +141,10 @@ public class CMan extends Enemy {
         time_passed += spawn_Delta;
 
         if (elapsed_Time >= time) {
-            CManProjectile p = new CManProjectile(getAngle(rect.getLocation(), duke.getLocation()), duke.getLocation());
-            p.pfx = rect.x+ (float) rect.width /2;
-            p.pfy = rect.y+ (float) rect.height /2;
-            p.speed = 2.5f;
+            CManProjectile p = new CManProjectile(duke.getLocation());
+            p.rect.x = rect.x;
+            p.rect.y = rect.y;
+            p.speed = 1f;
             projectiles.add(p);
             elapsed_Time = 0;
         }

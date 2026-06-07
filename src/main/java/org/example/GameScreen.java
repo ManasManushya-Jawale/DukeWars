@@ -2,7 +2,6 @@ package org.example;
 
 import org.example.util.enemies.Enemy;
 import org.example.util.Projectile;
-import org.example.util.Vector2;
 import org.example.util.enemies.CMan;
 import org.example.util.enemies.PySnake;
 
@@ -18,32 +17,23 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class GameScreen extends JPanel implements MouseMotionListener, KeyListener {
+public class GameScreen extends JPanel implements KeyListener {
     private long lastTime;
 
-    static record Range(int start, int end) {
+    record Range(int start, int end) {
         public boolean contains(int val) {
             return val >= start && val <= end;
         }
     }
 
-    private static final float LERP_FACTOR       = 0.1f;
-    private static final float MIN_SPEED         = 0.5f;
-    private static final int   DUKE_ANCHOR_X     = 69;
-    private static final int   DUKE_ANCHOR_Y     = 37;
-    private static final int   UPDATE_INTERVAL   = 4;
-    private static int   SPAWN_INTERVAL    = 2000;
+    private final int   UPDATE_INTERVAL   = 4;
+    private int   SPAWN_INTERVAL    = 2000;
 
     float timer = 0;
 
     public BufferedImage duke;
     public BufferedImage background;
 
-    public Vector2 posDuke   = new Vector2(100, 100);
-    public Point targetPos = new Point(100, 100);
-    public Point previousPos = new Point(100, 100);
-
-    private float fx = 100, fy = 100;
     public Rectangle dukeRect;
 
     public List<Enemy> enemies = new CopyOnWriteArrayList<>();
@@ -67,7 +57,6 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
         super(null);
         setFocusable(true);
         requestFocusInWindow();
-        addMouseMotionListener(this);
         addKeyListener(this);
 
         bar.setBounds(10, 10, 250, 50);
@@ -79,7 +68,7 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
         duke       = ImageIO.read(getClass().getResource("/sprites/DukeOnShip.png").openStream());
         background = ImageIO.read(getClass().getResource("/sprites/Background.png").openStream());
 
-        dukeRect = new Rectangle(posDuke.x, posDuke.y, duke.getWidth(), duke.getHeight());
+        dukeRect = new Rectangle(100, 100, duke.getWidth(), duke.getHeight());
 
         update_Timer = new Timer(UPDATE_INTERVAL, e -> {
 
@@ -118,13 +107,13 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
             }
             enemies.removeIf(en -> en.health <= 0 || en.rect.x < 0);
             projectiles.removeIf(p -> {
-                p.update();                      // move first
-                return p.rect.x > getWidth();     // cull off-screen
+                p.update();
+                return p.rect.x > getWidth();
             });
             projectiles.removeAll(removeQueue);
             removeQueue.clear();
 
-            dukeRect.setLocation(posDuke.x, posDuke.y);
+            dukeRect.setLocation(dukeRect.x, dukeRect.y);
 
             timer++;
             backX--;
@@ -145,7 +134,7 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
         spawn_Timer = new Timer(SPAWN_INTERVAL, e -> {
 
             if (parent != null) {
-                int val = rand.nextInt(0, 2000);
+                int val = rand.nextInt(0, 1000);
 
                 if (CSpawnRange.contains(val)) {
                     enemies.add(new CMan(this));
@@ -161,22 +150,14 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
     }
 
     public void kill() {
-        parent.setContentPane(new DeathScreen());
+        parent.setContentPane(new DeathScreen(parent));
         parent.revalidate();
         update_Timer.stop();
+        spawn_Timer.stop();
     }
     private static final float MOVE_SPEED = 2f;
 
     private void updateDuke() {
-        if (up)    angle = Math.toRadians(-90);
-        if (down)  angle = Math.toRadians(90);
-        if (left)  angle = Math.toRadians(180);
-        if (right) angle = Math.toRadians(0);
-
-        if (up && right)  angle = Math.toRadians(-45);
-        if (up && left)   angle = Math.toRadians(-135);
-        if (down && right) angle = Math.toRadians(45);
-        if (down && left)  angle = Math.toRadians(135);
 
         float dx = 0, dy = 0;
 
@@ -190,8 +171,8 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
             dy *= 0.7071f;
         }
 
-        posDuke.x += (int) dx;
-        posDuke.y += (int) dy;
+        dukeRect.x += (int) dx;
+        dukeRect.y += (int) dy;
 
     }
 
@@ -219,7 +200,7 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
         g2d.setTransform(new AffineTransform());  // reset first
 
         AffineTransform t = new AffineTransform();
-        t.translate(posDuke.x() + dukeRect.width / 2f, posDuke.y() + dukeRect.height / 2f); // center point
+        t.translate(dukeRect.x+ dukeRect.width / 2f, dukeRect.y + dukeRect.height / 2f); // center point
 
         t.rotate(angle);
         t.translate(-dukeRect.width / 2f, -dukeRect.height / 2f);
@@ -230,15 +211,7 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
 //        g.fillRect(dukeRect.x, dukeRect.y, dukeRect.width, dukeRect.height);
     }
 
-    @Override
-    public void mouseMoved(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseDragged(MouseEvent e) {
-    }
-
-    boolean w, a, s, d, up, down, left, right;
+    boolean w, a, s, d;
 
     @Override
     public void keyTyped(KeyEvent e) {
@@ -248,15 +221,22 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_W -> w = true;
-            case KeyEvent.VK_A -> a = true;
-            case KeyEvent.VK_S -> s = true;
-            case KeyEvent.VK_D -> d = true;
-
-            case KeyEvent.VK_UP -> up = true;
-            case KeyEvent.VK_DOWN -> down = true;
-            case KeyEvent.VK_LEFT -> left = true;
-            case KeyEvent.VK_RIGHT -> right = true;
+            case KeyEvent.VK_W -> {
+                w = true;
+                angle = Math.toRadians(-90);
+            }
+            case KeyEvent.VK_A -> {
+                a = true;
+                angle = Math.toRadians(180);
+            }
+            case KeyEvent.VK_S -> {
+                s = true;
+                angle = Math.toRadians(90);
+            }
+            case KeyEvent.VK_D -> {
+                d = true;
+                angle = Math.toRadians(0);
+            }
         }
     }
 
@@ -264,9 +244,21 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
     @Override
     public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_SPACE && timer > 100) {
-            projectiles.add(new Projectile(100){{
-                rect.setLocation(posDuke.x+173, posDuke.y+37);
-            }});
+            projectiles.add(new Projectile(100){
+                public float dx = 0, dy = 0;
+
+                {
+                    rect.x = dukeRect.x+173; rect.y = dukeRect.y+37;
+                    dx = (float) Math.cos(angle);
+                    dy = (float) Math.sin(angle);
+                }
+
+                @Override
+                public void update() {
+                    rect.x += Math.round(dx) * 3;
+                    rect.y += Math.round(dy) * 3;
+                }
+            });
             timer = 0;
         }
 
@@ -275,11 +267,6 @@ public class GameScreen extends JPanel implements MouseMotionListener, KeyListen
             case KeyEvent.VK_A -> a = false;
             case KeyEvent.VK_S -> s = false;
             case KeyEvent.VK_D -> d = false;
-
-            case KeyEvent.VK_UP -> up = false;
-            case KeyEvent.VK_DOWN -> down = false;
-            case KeyEvent.VK_LEFT -> left = false;
-            case KeyEvent.VK_RIGHT -> right = false;
         }
     }
 }
