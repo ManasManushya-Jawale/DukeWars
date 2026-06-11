@@ -1,6 +1,8 @@
 package org.example.util.enemies;
 
+import jdk.jshell.execution.Util;
 import org.example.GameScreen;
+import org.example.util.Utils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -13,8 +15,6 @@ public abstract class Enemy {
     BufferedImage image;
     public Rectangle.Float rect;
 
-    float fx, fy;
-
     int damage;
     float speed;
     public int health = 100;
@@ -22,11 +22,7 @@ public abstract class Enemy {
     GameScreen parent;
 
     public Enemy(String resourcePath, int damage, float speed, GameScreen parent) {
-        try {
-            this.image = ImageIO.read(getClass().getResource(resourcePath).openStream());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        this.image = Utils.getImage(resourcePath);
         this.damage = damage;
         this.speed = speed;
         this.parent = parent;

@@ -1,9 +1,11 @@
 package org.example;
 
+import org.example.util.Utils;
 import org.example.util.enemies.Enemy;
 import org.example.util.Projectile;
 import org.example.util.enemies.CMan;
 import org.example.util.enemies.PySnake;
+import static org.example.util.Utils.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -17,7 +19,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class GameScreen extends JPanel implements KeyListener {
+public class GameScreen extends JPanel {
     private long lastTime;
 
     record Range(int start, int end) {
@@ -26,7 +28,6 @@ public class GameScreen extends JPanel implements KeyListener {
         }
     }
 
-    private final int   UPDATE_INTERVAL   = 4;
     private int   SPAWN_INTERVAL    = 2000;
 
     float timer = 0;
@@ -52,25 +53,34 @@ public class GameScreen extends JPanel implements KeyListener {
     Range PySpawnRange = new Range(801, 999);
 
     JProgressBar bar = new JProgressBar(0, 100);
+    JLabel score = new JLabel("Score: "){{
+        setForeground(Color.WHITE);
+        setBounds(10, 40, 200, 50);
+    }};
+
+    int scoreVal = 0;
 
     public GameScreen(JFrame parent) throws IOException {
         super(null);
         setFocusable(true);
         requestFocusInWindow();
-        addKeyListener(this);
+
+        setPanel(this);
+        setupKeyBindings();
 
         bar.setBounds(10, 10, 250, 50);
         bar.setValue(40);
+        add(score);
         add(bar);
 
         this.parent = parent;
 
-        duke       = ImageIO.read(getClass().getResource("/sprites/DukeOnShip.png").openStream());
-        background = ImageIO.read(getClass().getResource("/sprites/Background.png").openStream());
+        duke = getImage("/sprites/DukeOnShip.png");
+        background = getImage("/sprites/Background.png");
 
         dukeRect = new Rectangle(100, 100, duke.getWidth(), duke.getHeight());
 
-        update_Timer = new Timer(UPDATE_INTERVAL, e -> {
+        update_Timer = new Timer(4, e -> {
 
             updateDuke();
             for (int i=0;i<enemies.size();i++) {
@@ -85,7 +95,7 @@ public class GameScreen extends JPanel implements KeyListener {
 
                 for (Projectile projectile : projectiles) {
                     if (i==0) {
-                        if (projectile.rect.x > getParent().getWidth()) {
+                        if (projectile.rect.x > getWidth()) {
                             projectiles.remove(projectile);
                         }
                     }
@@ -93,7 +103,7 @@ public class GameScreen extends JPanel implements KeyListener {
                         enemy.health -= projectile.damage;
                         removeQueue.add(projectile);
 
-                        SPAWN_INTERVAL= (int) (SPAWN_INTERVAL * .99f);
+                        SPAWN_INTERVAL= (int) (SPAWN_INTERVAL * .9f);
                         spawn_Timer.setDelay(SPAWN_INTERVAL);
                     }
 
@@ -123,9 +133,11 @@ public class GameScreen extends JPanel implements KeyListener {
             }
 
             long now = System.nanoTime();
-            // Calculate delta time in seconds
             spawner_delta = (now - lastTime) / (double) 1_000_000_000;
             lastTime = now;
+
+            scoreVal += 1;
+            score.setText("Score: " + scoreVal);
 
             repaint();
         });
@@ -150,34 +162,35 @@ public class GameScreen extends JPanel implements KeyListener {
     }
 
     public void kill() {
-        parent.setContentPane(new DeathScreen(parent));
+        parent.setContentPane(new DeathScreen());
         parent.revalidate();
         update_Timer.stop();
         spawn_Timer.stop();
     }
-    private static final float MOVE_SPEED = 2f;
 
     private void updateDuke() {
 
         float dx = 0, dy = 0;
 
-        if (a) dx -= MOVE_SPEED;
-        if (d) dx += MOVE_SPEED;
-        if (w) dy -= MOVE_SPEED;
-        if (s) dy += MOVE_SPEED;
+        if (a) dx -= 2;
+        if (d) dx += 2;
+        if (w) dy -= 2;
+        if (s) dy += 2;
 
         if (dx != 0 && dy != 0) {
             dx *= 0.7071f;
             dy *= 0.7071f;
         }
+        if (dukeRect.x + dx < 0 || dukeRect.y +dy < 0 || dx+ dukeRect.width + dukeRect.x > getWidth() || dy+dukeRect.height + dukeRect.y > getHeight()) return;
 
         dukeRect.x += (int) dx;
         dukeRect.y += (int) dy;
 
+
     }
 
     int backX = 0;
-    double angle = 0;
+    public double angle = 0;
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -208,44 +221,37 @@ public class GameScreen extends JPanel implements KeyListener {
         g2d.setTransform(t);
         g2d.drawImage(duke, 0, 0, this);
         g2d.setTransform(new AffineTransform());
-//        g.fillRect(dukeRect.x, dukeRect.y, dukeRect.width, dukeRect.height);
     }
 
     boolean w, a, s, d;
 
-    @Override
-    public void keyTyped(KeyEvent e) {
+    public InputMap im;
+    public ActionMap am;
 
-    }
+    private void setupKeyBindings() {
+        im = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        am = getActionMap();
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_W -> {
-                w = true;
-                angle = Math.toRadians(-90);
-            }
-            case KeyEvent.VK_A -> {
-                a = true;
-                angle = Math.toRadians(180);
-            }
-            case KeyEvent.VK_S -> {
-                s = true;
-                angle = Math.toRadians(90);
-            }
-            case KeyEvent.VK_D -> {
-                d = true;
-                angle = Math.toRadians(0);
-            }
-        }
-    }
+        setKeyBind("up", new String[]{"pressed UP", "pressed W"}, () -> {
+            w = true;
+            setAngle(-90);
+        });
+        setKeyBind("lp", new String[]{"pressed LEFT", "pressed A"}, () -> {
+            a = true;
+            setAngle(-180);
+        });
+        setKeyBind("dp", new String[]{"pressed DOWN", "pressed S"}, () -> {
+            s = true;
+            setAngle(90);
+        });
+        setKeyBind("rp", new String[]{"pressed RIGHT", "pressed D"}, () -> {
+            d = true;
+            setAngle(0);
+        });
 
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_SPACE && timer > 100) {
+        setKeyBind("jump", new String[]{"pressed SPACE"}, () -> {
             projectiles.add(new Projectile(100){
-                public float dx = 0, dy = 0;
+                public final float dx, dy;
 
                 {
                     rect.x = dukeRect.x+173; rect.y = dukeRect.y+37;
@@ -260,13 +266,12 @@ public class GameScreen extends JPanel implements KeyListener {
                 }
             });
             timer = 0;
-        }
+        });
 
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_W -> w = false;
-            case KeyEvent.VK_A -> a = false;
-            case KeyEvent.VK_S -> s = false;
-            case KeyEvent.VK_D -> d = false;
-        }
+        setKeyBind("ur", new String[]{"released W", "released UP"}, () -> w=false);
+        setKeyBind("lr", new String[]{"released A", "released LEFT"}, () -> a=false);
+        setKeyBind("dr", new String[]{"released S", "released DOWN"}, () -> s=false);
+        setKeyBind("rr", new String[]{"released D", "released RIGHT"}, () -> d=false);
+
     }
 }

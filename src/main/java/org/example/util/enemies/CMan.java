@@ -17,25 +17,21 @@ import java.util.Random;
 
 public class CMan extends Enemy {
     class CManProjectile extends Projectile {
-        public float pfy=0, pfx=0;
 
         public BufferedImage image;
         public Point target;
 
         public double timePassed = 0;
+        public int dumb;
 
-        public CManProjectile(Point target) {
+        public CManProjectile(Point target, int dumbLim) {
             super(50);
-            try {
-                this.image = ImageIO.read(getClass().getResource("/sprites/Projectiles.png").openStream());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
+            this.image = Utils.getImage("/sprites/Projectiles.png");
             rect.width = image.getWidth(); rect.height = image.getHeight();
+            dumb = new Random().nextInt(-dumbLim, dumbLim);
 
-            this.target = new Point((int) (target.x + new Random().nextFloat(-dumb, dumb)),
-                    (int) (target.y + new Random().nextFloat(-dumb, dumb)));
+            this.target = new Point(target.x,
+                    target.y);
         }
 
         @Override
@@ -50,9 +46,13 @@ public class CMan extends Enemy {
     public boolean crashout = false;
 
     Point duke;
+    int dumb;
+    int distLim;
 
     public CMan(GameScreen parent) {
         super("/sprites/CMan.png", 1, 0.5f, parent);
+        dumb = new Random().nextInt(0, 90);
+        distLim = new Random().nextInt(100, 500);
     }
 
     @Override
@@ -62,7 +62,6 @@ public class CMan extends Enemy {
         AffineTransform transform = new AffineTransform();
         transform.translate(rect.x, rect.y);
         transform.rotate(getAngle(rect.getBounds().getLocation(), duke.getLocation())-135);
-//        transform.translate((double) -rect.width / 2, (double) -rect.height / 2);
 
         g2d.drawImage(image, transform, self);
 
@@ -93,9 +92,13 @@ public class CMan extends Enemy {
 
     boolean previousState = false;
     public void crashOut(Rectangle duke) {
-        if (crashout != previousState) projectiles.clear();
+        if (crashout != previousState) {
+            while (bullets >= 1) {
+                spawnProjectile(duke);
+                bullets--;
+            }
+        }
 
-            // Target Duke's center (adjust offsets to match Duke's sprite size)
         float targetX = duke.x + 69;
         float targetY = duke.y;
 
@@ -106,9 +109,18 @@ public class CMan extends Enemy {
         rect.y += dy * 1 / 100 * speed * 1.5f;
 
         previousState = true;
-    }
 
-    float dumb = 360;
+        for (CManProjectile projectile : projectiles) {
+
+            projectile.timePassed += parent.spawner_delta;
+
+            Utils.aPathFind(projectile.target, projectile.speed*2, projectile.rect, projectile.dumb);
+
+            if (projectile.rect.intersects(duke)) {
+                parent.kill();
+            }
+        }
+    }
 
     public void normalAttacks(Rectangle duke) {
 
@@ -117,7 +129,7 @@ public class CMan extends Enemy {
                         Math.pow((duke.y - rect.y), 2)
         );
 
-        if (dist >= 800) {
+        if (dist >= distLim) {
             Utils.pathFind(this.duke, speed, rect);
         }
 
@@ -125,7 +137,7 @@ public class CMan extends Enemy {
 
             projectile.timePassed += parent.spawner_delta;
 
-            Utils.pathFind(projectile.target, projectile.speed, projectile.rect);
+            Utils.aPathFind(projectile.target, projectile.speed*2, projectile.rect, projectile.dumb);
 
             if (projectile.rect.intersects(duke)) {
                 parent.kill();
@@ -133,20 +145,27 @@ public class CMan extends Enemy {
         }
     }
 
-    double time = .5;
+    double time = 1.5;
+    int bullets = 15;
 
     @Override
     public void spawnChild(Rectangle duke, double spawn_Delta) {
         elapsed_Time += spawn_Delta;
         time_passed += spawn_Delta;
 
-        if (elapsed_Time >= time) {
-            CManProjectile p = new CManProjectile(duke.getLocation());
-            p.rect.x = rect.x;
-            p.rect.y = rect.y;
-            p.speed = 1f;
-            projectiles.add(p);
+        if (elapsed_Time >= time && bullets >= 1) {
             elapsed_Time = 0;
+            spawnProjectile(duke);
+
+            bullets--;
         }
+    }
+
+    public void spawnProjectile(Rectangle duke) {
+        CManProjectile p = new CManProjectile(duke.getLocation(), dumb);
+        p.rect.x = rect.x;
+        p.rect.y = rect.y;
+        p.speed = 1.5f;
+        projectiles.add(p);
     }
 }
