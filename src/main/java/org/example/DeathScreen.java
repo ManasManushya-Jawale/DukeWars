@@ -4,18 +4,21 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 
-public class DeathScreen extends JPanel {
-    public DeathScreen(JFrame parent) {
-        super();
+import static org.example.Main.*;
 
-        setLayout(new BorderLayout());
+public class DeathScreen extends JPanel {
+    public DeathScreen() {
+
+        super(new BorderLayout());
         add(new JButton("Restart"){{
+            setFocusable(false);
             addActionListener(_ -> {
                 try {
-                    Main.frame.setContentPane(new GameScreen(Main.frame));
-                    Main.frame.revalidate();
-                    Main.frame.repaint();
-                    SwingUtilities.invokeLater(Main.frame::requestFocusInWindow);
+                    panel = new GameScreen(frame);
+                    frame.setContentPane(panel);
+                    frame.revalidate();
+                    frame.repaint();
+                    SwingUtilities.invokeLater(frame::requestFocusInWindow);
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }

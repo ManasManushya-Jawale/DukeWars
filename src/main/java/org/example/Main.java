@@ -7,8 +7,18 @@ import java.io.IOException;
 
 public class Main {
     static JFrame frame = new JFrame();
-    void main() throws IOException {
-        frame.setContentPane(new GameScreen(frame));
+    public static GameScreen panel;
+
+    static {
+        try {
+            panel = new GameScreen(frame);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    void main() {
+        frame.setContentPane(panel);
         frame.setName("a manas-manushya product");
 
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
